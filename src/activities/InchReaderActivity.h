@@ -1,10 +1,9 @@
 #pragma once
 
 #include <Arduino.h>
-#include <functional>
 #include <string>
 #include <vector>
-#include "../Activity.h"
+#include "Activity.h"
 
 struct PetData {
   String name = "Inch";
@@ -15,21 +14,20 @@ struct PetData {
   int care_points = 3;
 };
 
-class InchReaderActivity : public Activity {
+class InchReaderActivity final : public Activity {
  public:
-  explicit InchReaderActivity(GfxRenderer& renderer, MappedInputManager& mappedInput,
-                              const std::function<void()>& onGoHome)
-      : Activity("InchReader", renderer, mappedInput), onGoHome_(onGoHome) {}
+  explicit InchReaderActivity(GfxRenderer& renderer, MappedInputManager& mappedInput)
+      : Activity("InchReader", renderer, mappedInput) {}
 
   void onEnter() override;
   void onExit() override;
   void loop() override;
+  void render(RenderLock&&) override;
 
  private:
   enum class ScreenMode { BOOKSHELF, PET_CARE, READING };
   ScreenMode mode_ = ScreenMode::BOOKSHELF;
 
-  std::function<void()> onGoHome_;
   PetData pet_;
   std::vector<std::string> books_;
   int selected_ = 0;
