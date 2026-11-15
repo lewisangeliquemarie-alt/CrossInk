@@ -1,10 +1,14 @@
 #include "InchReaderActivity.h"
+
 #include <ArduinoJson.h>
 #include <GfxRenderer.h>
+#include <HalStorage.h>
 #include <MappedInputManager.h>
-#include <SDCardManager.h>
+
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
+
 #include "fontIds.h"
 
 namespace {
@@ -21,19 +25,21 @@ constexpr int SHELF_THICKNESS = 12;
 }  // namespace
 
 void InchReaderActivity::onEnter() {
+  Activity::onEnter();
   loadPet();
   scanBooks();
   mode_ = ScreenMode::BOOKSHELF;
-  renderBookshelf();
+  requestUpdate();
 }
 
 void InchReaderActivity::onExit() {
   savePet();
+  Activity::onExit();
 }
 
 void InchReaderActivity::loadPet() {
-  FsFile file;
-  if (SdMan.openFileForRead("INCH", PET_SAVE_PATH, file)) {
+  HalFile file;
+  if (Storage.openFileForRead("INCH", PET_SAVE_PATH, file)) {
     JsonDocument doc;
     if (deserializeJson(doc, file) == DeserializationError::Ok) {
       pet_.name = doc["name"] | "Inch";
@@ -48,8 +54,8 @@ void InchReaderActivity::loadPet() {
 }
 
 void InchReaderActivity::savePet() {
-  FsFile file;
-  if (SdMan.openFileForWrite("INCH", PET_SAVE_PATH, file)) {
+  HalFile file;
+  if (Storage.openFileForWrite("INCH", PET_SAVE_PATH, file)) {
     JsonDocument doc;
     doc["name"] = pet_.name;
     doc["hunger"] = pet_.hunger;
@@ -64,14 +70,13 @@ void InchReaderActivity::savePet() {
 
 void InchReaderActivity::scanBooks() {
   books_.clear();
-  if (!SdMan.exists(BOOKS_DIR)) {
-    SdMan.mkdir(BOOKS_DIR);
-  }
-  FsFile dir;
-  if (SdMan.openFileForRead("INCH", BOOKS_DIR, dir)) {
-    FsFile entry;
-    char nameBuf[128];
-    while (entry.openNext(&dir, O_RDONLY)) {
+  Storage.ensureDirectoryExists(BOOKS_DIR);
+  HalFile dir = Storage.open(BOOKS_DIR, O_RDONLY);
+  if (dir && dir.isDirectory()) {
+    char nameBuf;
+    while (true) {
+      HalFile entry = dir.openNextFile();
+      if (!entry) break;
       if (!entry.isDirectory()) {
         entry.getName(nameBuf, sizeof(nameBuf));
         std::string fname(nameBuf);
@@ -243,7 +248,7 @@ void InchReaderActivity::drawAppleHome(int cx, int cy) {
 }
 
 void InchReaderActivity::drawStatBar(const char* label, int value, int x, int y) {
-  char buf[48];
+  char buf;
   snprintf(buf, sizeof(buf), "%s: %d%%", label, value);
   renderer.drawText(UI_10_FONT_ID, x, y, buf);
   drawRoundBox(x + 140, y - 3, 260, 18, 9, false, true);
@@ -253,7 +258,5 @@ void InchReaderActivity::drawStatBar(const char* label, int value, int x, int y)
   }
 }
 
-void InchReaderActivity::renderBookshelf() {
-  renderer.clearScreen();
-  int currentShelfPage = selected_ / BOOKS_PER_PAGE;
-  int startIdx = currentShelfPage * BOOKS_PER_PAGE;
+void InchReaderActivity::render(RenderLock&&) {
+  if (mode_ == ScreenMode::BOOKSHELF) {
