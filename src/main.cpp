@@ -1,3 +1,4 @@
+#include "activities/InchReaderActivity.h"
 #include <Arduino.h>
 #include <BoardConfig.h>
 #include <CrossInkHalFrontlight.h>
@@ -1600,6 +1601,8 @@ void setup() {
     delay(10);
     gpio.update();
   }
+  
+  activityManager.replaceActivity(std::make_unique<InchReaderActivity>(renderer, mappedInputManager));
 
   allowSleepAt = millis() + 2000;
 }
