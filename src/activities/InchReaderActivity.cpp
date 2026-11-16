@@ -1,4 +1,6 @@
-#include "InchReaderActivity.h"
+#include "../InchReaderActivity.h"
+#include "../reader/BookReadingStats.h"
+#include "../reader/BookStatsActivity.h"
 
 #include <ArduinoJson.h>
 #include <GfxRenderer.h>
